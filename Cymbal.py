@@ -186,24 +186,25 @@ for message in st.session_state["messages"]:
     role = "You 👤:" if message["role"] == "user" else "Buddy 📚:"
     st.markdown(f"**{role}** {message['content']}")
 
-# User input
+# ---- USER INPUT ----
 if "last_input" not in st.session_state:
     st.session_state["last_input"] = None
 
-user_input = st.text_input("💬 Send a message:", placeholder="Ask me anything!", key="user_input")
+user_input = st.text_input("💬 Type your message here:", key="user_input", value="", label_visibility="collapsed")
 
-if user_input and st.session_state["last_input"] != user_input:
-    st.session_state["last_input"] = user_input
+
+# Add a "Send" button to trigger input processing
+if st.button("Send") and user_input:
+    st.session_state["last_input"] = user_input 
     st.session_state["messages"].append({"role": "user", "content": user_input})
 
-    with st.spinner("Thinking..."):
-        time.sleep(0.75)
+    with st.spinner("🤖 ADHD Buddy is thinking..."):
+        time.sleep(1)
         bot_reply = generate_response(user_input)
 
     st.session_state["messages"].append({"role": "assistant", "content": bot_reply})
-
-    # Clear the input box after sending
     st.rerun()
+
 
 # --- Sidebar Organization ---
 with st.sidebar:
