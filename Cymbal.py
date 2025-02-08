@@ -5,6 +5,7 @@ import time
 import threading
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+from PIL import Image  # Import the Pillow library
 
 # Load API key
 load_dotenv()
@@ -49,6 +50,15 @@ color_schemes = {
         "highlight": "#FFFFE0"  # LightYellow Highlight
     }
 }
+
+# --- Sidebar ---
+try:
+    logo = Image.open("logo.png")  # Replace "orbit_logo.png" with your logo file
+    st.sidebar.image(logo, width=150)  # Adjust width as needed
+except FileNotFoundError:
+    st.sidebar.error("Logo not found. Please make sure 'logo.png' is in the same directory.")
+
+st.sidebar.title("🧠 Study Buddy")
 
 # Get selected mode
 mode = st.sidebar.radio("🌈 Choose Your Vibe:", ["Low Stimulation 🧘", "Dopamine Boost ✨"])
@@ -171,8 +181,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# --- Sidebar ---
-st.sidebar.title("🧠 Study Buddy")
 
 # --- Chat Interface ---
 st.markdown(f"<h3 style='text-align: center; color:{selected_colors['text']};'>💡 Study Chatbot 🤖</h3>", unsafe_allow_html=True)
@@ -321,36 +329,36 @@ with st.sidebar:
         st.markdown(f"⏺️ {saved_note}")
 
 # --- Session Summary ---
-st.sidebar.subheader("📊 Session Summary")
-if st.sidebar.button("End Session & Get Summary", key="end_session"):
-    if st.session_state["study_start_time"]:
-        study_time = datetime.now() - st.session_state["study_start_time"]
-        minutes_studied = study_time.seconds // 60
-        completed_tasks = len(st.session_state["finished_tasks"])
+    st.subheader("📊 Session Summary")
+    if st.button("End Session & Get Summary", key="end_session"):
+        if st.session_state["study_start_time"]:
+            study_time = datetime.now() - st.session_state["study_start_time"]
+            minutes_studied = study_time.seconds // 60
+            completed_tasks = len(st.session_state["finished_tasks"])
 
-        study_tips = [
-            "Summarize what you learned. 📝",
-            "Use active recall. 🤔",
-            "Break into chunks. 🧩",
-            "Use visuals. 🗺️",
-            "Take breaks! 😴"
-        ]
+            study_tips = [
+                "Summarize what you learned. 📝",
+                "Use active recall. 🤔",
+                "Break into chunks. 🧩",
+                "Use visuals. 🗺️",
+                "Take breaks! 😴"
+            ]
 
-        st.sidebar.markdown(f"<h4 style='color:{selected_colors['text']};'>Session Review</h4>", unsafe_allow_html=True)
-        st.sidebar.markdown(f"**Focus Time:** {minutes_studied} mins")
-        st.sidebar.markdown(f"**Tasks Done:** {completed_tasks}")
-        st.sidebar.markdown(f"<h5 style='color:{selected_colors['text']};'>Tips:</h5>", unsafe_allow_html=True)
-        for tip in study_tips[:3]:
-            st.sidebar.markdown(f"✔️ {tip}")
+            st.sidebar.markdown(f"<h4 style='color:{selected_colors['text']};'>Session Review</h4>", unsafe_allow_html=True)
+            st.sidebar.markdown(f"**Focus Time:** {minutes_studied} mins")
+            st.sidebar.markdown(f"**Tasks Done:** {completed_tasks}")
+            st.sidebar.markdown(f"<h5 style='color:{selected_colors['text']};'>Tips:</h5>", unsafe_allow_html=True)
+            for tip in study_tips[:3]:
+                st.sidebar.markdown(f"✔️ {tip}")
 
-        # Reset session
-        st.session_state["study_start_time"] = None
-        st.session_state["finished_tasks"] = []
-        st.session_state["messages"] = []
-        st.session_state["timer_seconds"] = 1500
-        st.rerun()
-    else:
-        st.sidebar.warning("Start focus session first!")
+            # Reset session
+            st.session_state["study_start_time"] = None
+            st.session_state["finished_tasks"] = []
+            st.session_state["messages"] = []
+            st.session_state["timer_seconds"] = 1500
+            st.rerun()
+        else:
+            st.sidebar.warning("Start focus session first!")
 
 # --- Clear Chat Button ---
 if st.button("Clear Chat"):
