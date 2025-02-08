@@ -44,9 +44,10 @@ for message in st.session_state["messages"]:
 if "last_input" not in st.session_state:
     st.session_state["last_input"] = None
 
-user_input = st.text_input("💬 Type your message here:")
+user_input = st.text_input("💬 Type your message here:", key="user_input", value="", label_visibility="collapsed")
 
-if user_input and st.session_state["last_input"] != user_input:
+# Add a "Send" button to trigger input processing
+if st.button("Send") and user_input:
     st.session_state["last_input"] = user_input  
     st.session_state["messages"].append({"role": "user", "content": user_input})
 
@@ -55,6 +56,8 @@ if user_input and st.session_state["last_input"] != user_input:
         bot_reply = generate_response(user_input)
 
     st.session_state["messages"].append({"role": "assistant", "content": bot_reply})
+
+    # Clear the input box after sending
     st.rerun()
 
 
