@@ -279,23 +279,42 @@ with st.sidebar:
             task_entry = f"{emoji} {new_task} (Due: {deadline.strftime('%b %d')})"
             st.session_state["tasks"].append(task_entry)
 
+    # Categorize tasks
+    sorted_tasks = {"urgent": [], "creative": [], "study": [], "general": []}
+
+    for task in st.session_state["tasks"]:
+        for category in task_emojis.keys():
+            if task.startswith(task_emojis[category]):
+                sorted_tasks[category].append(task)
+
+    # Sort tasks within each category by deadline
+    def extract_deadline(task):
+        try:
+            # Extract date from the task string (format: "Due: MMM DD")
+            deadline_part = task.split("(Due: ")[-1].strip(")")
+            return datetime.strptime(deadline_part, "%b %d")
+        except ValueError:
+            return datetime.max  # If no valid date, push to the end
+
+    for category in sorted_tasks:
+        sorted_tasks[category].sort(key=extract_deadline)
+
     # Display current tasks
     st.subheader("Current Tasks")
-    if st.session_state["tasks"]:
-        for task in st.session_state["tasks"]:
-            col1, col2 = st.columns([0.8, 0.2])
-            col1.markdown(task, unsafe_allow_html=True)
-            if col2.button("Remove", key=task):
-                st.session_state["tasks"].remove(task)
-                st.rerun()
-
-    # Complete tasks
-    task_to_finish = st.selectbox("Complete a task:", ["None"] + st.session_state["tasks"], key="task_to_finish")
-    if st.button("Mark as Done!", key="complete_task"):
-        if task_to_finish != "None":
-            st.session_state["tasks"].remove(task_to_finish)
-            st.session_state["finished_tasks"].append(task_to_finish)
-            st.rerun()
+    for category in ["urgent", "study", "general", "creative"]:
+        if sorted_tasks[category]:
+            st.markdown(f"**{category.capitalize()} Tasks:**")
+            for i, task in enumerate(sorted_tasks[category]):
+                col1, col2, col3 = st.columns([0.6, 0.2, 0.2])
+                # Use st.write or st.markdown for left alignment
+                col1.markdown(task)
+                if col2.button("✅", key=f"complete_{category}_{i}"):
+                    st.session_state["tasks"].remove(task)
+                    st.session_state["finished_tasks"].append(task)
+                    st.rerun()  # Refresh to update the display
+                if col3.button("❌", key=f"remove_{category}_{i}"):  # Ensure unique key
+                    st.session_state["tasks"].remove(task)
+                    st.rerun()
 
     # Display finished tasks
     st.subheader("Completed Tasks")
