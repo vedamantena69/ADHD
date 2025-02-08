@@ -57,40 +57,56 @@ if user_input and st.session_state["last_input"] != user_input:
     st.session_state["messages"].append({"role": "assistant", "content": bot_reply})
     st.rerun()
 
+
 # ---- POMODORO TIMER ----
 st.sidebar.subheader("⏳ Pomodoro Timer")
+
+# Timer session duration selection
+session_length = st.sidebar.selectbox("Select Focus Session Length:", [10, 20, 30, 40, 50, 60], index=2)  
+session_seconds = session_length * 60  # Convert minutes to seconds
+
+# Initialize session state variables
+if "start_time" not in st.session_state:
+    st.session_state["start_time"] = None
 if "timer_seconds" not in st.session_state:
-    st.session_state["timer_seconds"] = 1500  # 25 minutes
-if "study_start_time" not in st.session_state:
-    st.session_state["study_start_time"] = None
+    st.session_state["timer_seconds"] = session_seconds  
 if "timer_running" not in st.session_state:
     st.session_state["timer_running"] = False
 
-def update_timer():
-    while st.session_state["timer_running"] and st.session_state["timer_seconds"] > 0:
-        time.sleep(1)
-        st.session_state["timer_seconds"] -= 1
-        st.experimental_rerun()
-    if st.session_state["timer_seconds"] == 0:
-        st.sidebar.warning("🚨 Time for a break! 🚨")
-        st.session_state["timer_running"] = False
+# Timer display placeholders
+timer_display = st.sidebar.empty()
+progress_bar = st.sidebar.progress(0)
 
-if st.sidebar.button("Start Focus Session"):
-    st.session_state["study_start_time"] = datetime.now()
+def start_timer(duration):
+    """Starts the countdown timer and stores start time."""
+    st.session_state["start_time"] = datetime.now()
+    st.session_state["timer_seconds"] = duration
     st.session_state["timer_running"] = True
-    threading.Thread(target=update_timer, daemon=True).start()
+
+# Calculate remaining time
+if st.session_state["timer_running"] and st.session_state["start_time"]:
+    elapsed_time = (datetime.now() - st.session_state["start_time"]).total_seconds()
+    remaining_time = max(st.session_state["timer_seconds"] - int(elapsed_time), 0)
+
+    mins, secs = divmod(remaining_time, 60)
+    timer_display.markdown(f"**Time Left:** {int(mins)} min {int(secs)} sec")
+    progress_bar.progress(remaining_time / st.session_state["timer_seconds"])
+
+    if remaining_time == 0:
+        st.sidebar.warning("🚨 Time for a break! 🚨")
+        st.session_state["timer_running"] = False  # Stop timer
+
+# Buttons to control the timer
+if st.sidebar.button("Start Focus Session"):
+    start_timer(session_seconds)
 
 if st.sidebar.button("Take a Break"):
-    st.session_state["timer_seconds"] = 300  # 5-minute break
-    st.session_state["timer_running"] = True
-    threading.Thread(target=update_timer, daemon=True).start()
+    start_timer(300)  # 5-minute break
 
-st.sidebar.progress(st.session_state["timer_seconds"] / 1500)
-st.sidebar.markdown(f"**Time Left:** {st.session_state['timer_seconds'] // 60} min {st.session_state['timer_seconds'] % 60} sec")
-
-# Stop timer if needed
 if st.sidebar.button("Stop Timer"):
     st.session_state["timer_running"] = False
+    st.session_state["start_time"] = None
+
 
 # ---- SMART TASK MANAGEMENT ----
 st.sidebar.subheader("🚀 Smart Task Prioritization")
