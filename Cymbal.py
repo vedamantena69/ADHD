@@ -18,20 +18,11 @@ genai.configure(api_key=api_key)
 
 # Function to generate chatbot response
 def generate_response(user_input):
-    print(f"🔍 Sending input to Gemini AI: {user_input}")  # Debugging
-
     try:
         model = genai.GenerativeModel("gemini-pro")
         response = model.generate_content(user_input)
-
-        if response and hasattr(response, "text"):
-            print(f"✅ AI Response: {response.text}")  # Debugging
-            return response.text
-        else:
-            print("⚠️ No valid response from AI.")
-            return "Oops! I couldn’t find an answer. Try again!"
+        return response.text if response and hasattr(response, "text") else "Oops! I couldn’t find an answer. Try again!"
     except Exception as e:
-        print(f"❌ AI Error: {e}")  # Debugging
         return "⚠️ Error: Unable to process response. Check API Key & Internet Connection."
 
 # ---- UI MODE SELECTION ----
@@ -42,24 +33,30 @@ mode = st.sidebar.radio("🌈 Choose Your View:", ["🧘 Low Stimulation Mode", 
 if mode == "🧘 Low Stimulation Mode":
     st.markdown("""
         <style>
-            body { background-color: #F5F5F5; font-family: 'Arial', sans-serif; }
-            .chat-container { background-color: #FFFFFF; padding: 20px; border-radius: 15px; box-shadow: 5px 5px 15px rgba(0,0,0,0.1); }
-            .chat-message { font-size: 20px; font-weight: bold; margin-bottom: 10px; }
-            .stTextInput>div>div>input { font-size: 20px; padding: 10px; border-radius: 15px; border: 2px solid #aaa; }
+            body { background-color: #FAFAFA; font-family: 'Inter', sans-serif; }
+            .stApp { background: #FAFAFA; }
+            .chat-container { background: white; padding: 20px; border-radius: 15px; box-shadow: 2px 2px 15px rgba(0,0,0,0.1); }
+            .chat-message { font-size: 18px; font-weight: 500; margin-bottom: 10px; padding: 12px; border-radius: 12px; }
+            .user { background: #E3F2FD; color: #0D47A1; }
+            .bot { background: #E8F5E9; color: #2E7D32; }
+            .stTextInput>div>div>input { font-size: 18px; padding: 12px; border-radius: 12px; border: 2px solid #D0D0D0; }
+            .stButton>button { background: linear-gradient(90deg, #6A11CB, #2575FC); color: white; font-size: 16px; border-radius: 12px; padding: 10px; font-weight: bold; }
         </style>
     """, unsafe_allow_html=True)
 
 elif mode == "🎉 Dopamine Mode":
     st.markdown("""
         <style>
-            body { background: linear-gradient(to right, #FCE7F3, #D9F4FF); font-family: 'Poppins', sans-serif; }
-            .stApp { background: linear-gradient(to right, #FCE7F3, #D9F4FF); }
-            .title { font-size: 48px; font-weight: bold; color: #FF69B4; text-align: center; margin-bottom: 10px; }
-            .subtitle { font-size: 22px; text-align: center; color: #444; }
-            .chat-container { background: rgba(255, 255, 255, 0.6); padding: 20px; border-radius: 20px; backdrop-filter: blur(10px); }
-            .chat-message { font-size: 22px; font-weight: bold; padding: 12px; border-radius: 10px; }
-            .bot { color: #007AFF; font-weight: bold; }
-            .user { color: #FF69B4; font-weight: bold; }
+            body { background: linear-gradient(to right, #FFD3A5, #FD6585); font-family: 'Poppins', sans-serif; }
+            .stApp { background: linear-gradient(to right, #FFD3A5, #FD6585); }
+            .title { font-size: 42px; font-weight: bold; color: #FFF; text-align: center; margin-bottom: 10px; }
+            .subtitle { font-size: 18px; text-align: center; color: #FFF; opacity: 0.8; }
+            .chat-container { background: rgba(255, 255, 255, 0.3); padding: 20px; border-radius: 15px; backdrop-filter: blur(10px); }
+            .chat-message { font-size: 20px; font-weight: bold; padding: 12px; border-radius: 12px; }
+            .user { background: #FFEB3B; color: #333; }
+            .bot { background: #B3E5FC; color: #01579B; }
+            .stTextInput>div>div>input { font-size: 18px; padding: 12px; border-radius: 12px; border: 2px solid #FF80AB; }
+            .stButton>button { background: linear-gradient(90deg, #FF80AB, #FF4081); color: white; font-size: 18px; border-radius: 12px; font-weight: bold; }
         </style>
     """, unsafe_allow_html=True)
 
@@ -72,8 +69,9 @@ if "messages" not in st.session_state:
 
 st.markdown('<div class="chat-container">', unsafe_allow_html=True)
 for message in st.session_state["messages"]:
-    role = "👤 **You:** " if message["role"] == "user" else "🤖 **ADHD Buddy:** "
-    st.markdown(f"<p class='chat-message'><b>{role}</b> {message['content']}</p>", unsafe_allow_html=True)
+    role_class = "user" if message["role"] == "user" else "bot"
+    role = "👤 You:" if message["role"] == "user" else "🤖 ADHD Buddy:"
+    st.markdown(f"<p class='chat-message {role_class}'><b>{role}</b> {message['content']}</p>", unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
 # ---- USER INPUT ----
@@ -83,21 +81,14 @@ if "last_input" not in st.session_state:
 user_input = st.text_input("💬 Type your message here:")
 
 if user_input and st.session_state["last_input"] != user_input:
-    # Store last processed input to prevent infinite reruns
     st.session_state["last_input"] = user_input  
-
-    # Add user message to session state
     st.session_state["messages"].append({"role": "user", "content": user_input})
 
-    # Generate response with delay
     with st.spinner("🤖 ADHD Buddy is thinking..."):
         time.sleep(1)
         bot_reply = generate_response(user_input)
 
-    # Append bot response to session state
     st.session_state["messages"].append({"role": "assistant", "content": bot_reply})
-
-    # Prevent infinite reruns
     st.rerun()
 
 # ---- STICKY NOTES FEATURE ----
@@ -124,7 +115,7 @@ if task_progress >= 25:
 # ---- TASK MANAGEMENT (SMART PRIORITIZATION) ----
 st.sidebar.subheader("🚀 Smart Task Prioritization")
 tasks = {
-    "Finish Homework": {"deadline": 2, "subtasks": 5},  # Deadline in days, subtasks count
+    "Finish Homework": {"deadline": 2, "subtasks": 5},
     "Reply to Emails": {"deadline": 5, "subtasks": 2},
     "Study for Exam": {"deadline": 1, "subtasks": 7},
 }
