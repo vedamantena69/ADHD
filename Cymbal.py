@@ -260,7 +260,6 @@ with st.sidebar:
 
     st.markdown("---")
     
-
     st.subheader("✅ Task Manager")
 
     # Task state variables
@@ -329,6 +328,10 @@ with st.sidebar:
     if st.session_state["finished_tasks"]:
         for task in st.session_state["finished_tasks"]:
             st.markdown(f"✔️ {task}")
+            
+    if st.button("Clear Completed Tasks", key="clear_finished"):
+        st.session_state["finished_tasks"] = []
+        st.rerun()
 
     st.markdown("---")
 
