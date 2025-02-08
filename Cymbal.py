@@ -2,6 +2,8 @@ import streamlit as st
 import google.generativeai as genai
 import os
 import time
+import threading
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
 # Load API key
@@ -10,7 +12,7 @@ api_key = os.getenv("GOOGLE_API_KEY")
 
 # Ensure API key exists
 if not api_key:
-    st.error("⚠️ API Key is missing! Make sure it's set in the .env file.")
+    st.error("API Key is missing! Make sure it's set in the .env file.")
     st.stop()
 
 # Configure Google Generative AI
@@ -21,58 +23,22 @@ def generate_response(user_input):
     try:
         model = genai.GenerativeModel("gemini-pro")
         response = model.generate_content(user_input)
-        return response.text if response and hasattr(response, "text") else "Oops! I couldn’t find an answer. Try again!"
+        return response.text if response and hasattr(response, "text") else "I couldn’t find an answer. Try again!"
     except Exception as e:
         return "⚠️ Error: Unable to process response. Check API Key & Internet Connection."
 
 # ---- UI MODE SELECTION ----
 st.sidebar.title("🎨 Customize Your Experience")
-mode = st.sidebar.radio("🌈 Choose Your View:", ["🧘 Low Stimulation Mode", "🎉 Dopamine Mode"])
-
-# ---- AESTHETIC STYLING ----
-if mode == "🧘 Low Stimulation Mode":
-    st.markdown("""
-        <style>
-            body { background-color: #FAFAFA; font-family: 'Inter', sans-serif; }
-            .stApp { background: #FAFAFA; }
-            .chat-container { background: white; padding: 20px; border-radius: 15px; box-shadow: 2px 2px 15px rgba(0,0,0,0.1); }
-            .chat-message { font-size: 18px; font-weight: 500; margin-bottom: 10px; padding: 12px; border-radius: 12px; }
-            .user { background: #E3F2FD; color: #0D47A1; }
-            .bot { background: #E8F5E9; color: #2E7D32; }
-            .stTextInput>div>div>input { font-size: 18px; padding: 12px; border-radius: 12px; border: 2px solid #D0D0D0; }
-            .stButton>button { background: linear-gradient(90deg, #6A11CB, #2575FC); color: white; font-size: 16px; border-radius: 12px; padding: 10px; font-weight: bold; }
-        </style>
-    """, unsafe_allow_html=True)
-
-elif mode == "🎉 Dopamine Mode":
-    st.markdown("""
-        <style>
-            body { background: linear-gradient(to right, #FFD3A5, #FD6585); font-family: 'Poppins', sans-serif; }
-            .stApp { background: linear-gradient(to right, #FFD3A5, #FD6585); }
-            .title { font-size: 42px; font-weight: bold; color: #FFF; text-align: center; margin-bottom: 10px; }
-            .subtitle { font-size: 18px; text-align: center; color: #FFF; opacity: 0.8; }
-            .chat-container { background: rgba(255, 255, 255, 0.3); padding: 20px; border-radius: 15px; backdrop-filter: blur(10px); }
-            .chat-message { font-size: 20px; font-weight: bold; padding: 12px; border-radius: 12px; }
-            .user { background: #FFEB3B; color: #333; }
-            .bot { background: #B3E5FC; color: #01579B; }
-            .stTextInput>div>div>input { font-size: 18px; padding: 12px; border-radius: 12px; border: 2px solid #FF80AB; }
-            .stButton>button { background: linear-gradient(90deg, #FF80AB, #FF4081); color: white; font-size: 18px; border-radius: 12px; font-weight: bold; }
-        </style>
-    """, unsafe_allow_html=True)
-
-st.markdown('<p class="title">✨ ADHD Chatbot 💖</p>', unsafe_allow_html=True)
-st.markdown('<p class="subtitle">Ask me anything! 🌈</p>', unsafe_allow_html=True)
+mode = st.sidebar.radio("🌈 Choose Your View:", ["Low Stimulation Mode", "Dopamine Mode"])
 
 # ---- CHAT HISTORY ----
 if "messages" not in st.session_state:
     st.session_state["messages"] = []
 
-st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+st.markdown("### ✨ ADHD Study Chatbot")
 for message in st.session_state["messages"]:
-    role_class = "user" if message["role"] == "user" else "bot"
-    role = "👤 You:" if message["role"] == "user" else "🤖 ADHD Buddy:"
-    st.markdown(f"<p class='chat-message {role_class}'><b>{role}</b> {message['content']}</p>", unsafe_allow_html=True)
-st.markdown('</div>', unsafe_allow_html=True)
+    role = "You:" if message["role"] == "user" else "ADHD Buddy:"
+    st.markdown(f"**{role}** {message['content']}")
 
 # ---- USER INPUT ----
 if "last_input" not in st.session_state:
@@ -84,12 +50,126 @@ if user_input and st.session_state["last_input"] != user_input:
     st.session_state["last_input"] = user_input  
     st.session_state["messages"].append({"role": "user", "content": user_input})
 
-    with st.spinner("🤖 ADHD Buddy is thinking..."):
+    with st.spinner("Thinking..."):
         time.sleep(1)
         bot_reply = generate_response(user_input)
 
     st.session_state["messages"].append({"role": "assistant", "content": bot_reply})
     st.rerun()
+
+# ---- POMODORO TIMER ----
+st.sidebar.subheader("⏳ Pomodoro Timer")
+if "timer_seconds" not in st.session_state:
+    st.session_state["timer_seconds"] = 1500  # 25 minutes
+if "study_start_time" not in st.session_state:
+    st.session_state["study_start_time"] = None
+if "timer_running" not in st.session_state:
+    st.session_state["timer_running"] = False
+
+def update_timer():
+    while st.session_state["timer_running"] and st.session_state["timer_seconds"] > 0:
+        time.sleep(1)
+        st.session_state["timer_seconds"] -= 1
+        st.experimental_rerun()
+    if st.session_state["timer_seconds"] == 0:
+        st.sidebar.warning("🚨 Time for a break! 🚨")
+        st.session_state["timer_running"] = False
+
+if st.sidebar.button("Start Focus Session"):
+    st.session_state["study_start_time"] = datetime.now()
+    st.session_state["timer_running"] = True
+    threading.Thread(target=update_timer, daemon=True).start()
+
+if st.sidebar.button("Take a Break"):
+    st.session_state["timer_seconds"] = 300  # 5-minute break
+    st.session_state["timer_running"] = True
+    threading.Thread(target=update_timer, daemon=True).start()
+
+st.sidebar.progress(st.session_state["timer_seconds"] / 1500)
+st.sidebar.markdown(f"**Time Left:** {st.session_state['timer_seconds'] // 60} min {st.session_state['timer_seconds'] % 60} sec")
+
+# Stop timer if needed
+if st.sidebar.button("Stop Timer"):
+    st.session_state["timer_running"] = False
+
+# ---- SMART TASK MANAGEMENT ----
+st.sidebar.subheader("🚀 Smart Task Prioritization")
+if "tasks" not in st.session_state:
+    st.session_state["tasks"] = []
+if "finished_tasks" not in st.session_state:
+    st.session_state["finished_tasks"] = []
+
+task_emojis = {
+    "urgent": "🔥",
+    "creative": "💡",
+    "study": "📚",
+    "general": "✅"
+}
+
+new_task = st.sidebar.text_input("Add New Task:")
+task_type = st.sidebar.selectbox("Select Task Type:", ["urgent", "creative", "study", "general"])
+deadline = st.sidebar.date_input("Set Deadline:", min_value=datetime.today())
+
+if st.sidebar.button("➕ Add Task"):
+    if new_task:
+        emoji = task_emojis.get(task_type, "✅")
+        task_entry = f"{emoji} {new_task} (Due: {deadline.strftime('%b %d')})"
+        st.session_state["tasks"].append(task_entry)
+
+# Display tasks with deadlines & individual remove buttons
+st.sidebar.subheader("📌 Current Tasks")
+if st.session_state["tasks"]:
+    for task in st.session_state["tasks"]:
+        col1, col2 = st.sidebar.columns([0.8, 0.2])
+        col1.markdown(task)
+        if col2.button("❌", key=task):
+            st.session_state["tasks"].remove(task)
+            st.rerun()
+
+# Mark Task as Finished
+task_to_finish = st.sidebar.selectbox("✅ Mark Task as Finished:", ["None"] + st.session_state["tasks"])
+if st.sidebar.button("✔️ Complete Task"):
+    if task_to_finish != "None":
+        st.session_state["tasks"].remove(task_to_finish)
+        st.session_state["finished_tasks"].append(task_to_finish)
+        st.rerun()
+
+# Display Finished Tasks
+st.sidebar.subheader("🎯 Completed Tasks")
+if st.session_state["finished_tasks"]:
+    for task in st.session_state["finished_tasks"]:
+        st.sidebar.markdown(f"✅ {task}")
+
+# ---- STUDY SESSION SUMMARY ----
+if st.sidebar.button("📊 Finish Study Session"):
+    if st.session_state["study_start_time"]:
+        study_time = datetime.now() - st.session_state["study_start_time"]
+        minutes_studied = study_time.seconds // 60
+        completed_tasks = len(st.session_state["finished_tasks"])
+
+        study_tips = [
+            "Try summarizing what you learned today in a few sentences.",
+            "Use active recall techniques to reinforce what you studied.",
+            "Next time, try breaking complex topics into smaller chunks.",
+            "Use visual aids or mind maps for better retention.",
+            "Ensure you take enough breaks to avoid burnout!"
+        ]
+
+        st.sidebar.markdown("### 📊 Study Session Summary")
+        st.sidebar.markdown(f"**Total Study Time:** {minutes_studied} minutes")
+        st.sidebar.markdown(f"**Tasks Completed:** {completed_tasks}")
+        st.sidebar.markdown("#### 📌 Tips for Next Study Session:")
+        for tip in study_tips[:3]:  # Display only 3 tips
+            st.sidebar.markdown(f"✅ {tip}")
+
+        # Reset session
+        st.session_state["study_start_time"] = None
+        st.session_state["finished_tasks"] = []
+        st.session_state["messages"] = []
+        st.session_state["timer_seconds"] = 1500
+        st.rerun()
+    else:
+        st.sidebar.warning("You need to start a focus session first!")
 
 # ---- STICKY NOTES FEATURE ----
 st.sidebar.subheader("📝 Sticky Notes")
@@ -100,32 +180,13 @@ note = st.sidebar.text_input("Write a quick thought:")
 if st.sidebar.button("📌 Save Note") and note:
     st.session_state["sticky_notes"].append(note)
 
-for saved_note in st.session_state["sticky_notes"]:
-    st.sidebar.markdown(f"✅ {saved_note}")
-
 if st.sidebar.button("🗑️ Clear Notes"):
     st.session_state["sticky_notes"] = []
 
-# ---- BREAK REMINDER PROGRESS BAR ----
-st.sidebar.subheader("⏳ Stay on Task")
-task_progress = st.sidebar.slider("How long have you been working? (minutes)", 0, 60, 25)
-if task_progress >= 25:
-    st.sidebar.warning("🔔 Time for a 5-minute break!")
-
-# ---- TASK MANAGEMENT (SMART PRIORITIZATION) ----
-st.sidebar.subheader("🚀 Smart Task Prioritization")
-tasks = {
-    "Finish Homework": {"deadline": 2, "subtasks": 5},
-    "Reply to Emails": {"deadline": 5, "subtasks": 2},
-    "Study for Exam": {"deadline": 1, "subtasks": 7},
-}
-
-sorted_tasks = sorted(tasks.items(), key=lambda x: (x[1]["deadline"], x[1]["subtasks"]))
-
-for task, details in sorted_tasks:
-    st.sidebar.markdown(f"✅ **{task}** (Due in {details['deadline']} days, {details['subtasks']} steps)")
+for saved_note in st.session_state["sticky_notes"]:
+    st.sidebar.markdown(f"✅ {saved_note}")
 
 # ---- CLEAR CHAT BUTTON ----
-if st.button("🧹 Clear Chat"):
+if st.button("Clear Chat"):
     st.session_state["messages"] = []
     st.rerun()
