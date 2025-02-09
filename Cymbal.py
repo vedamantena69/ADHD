@@ -43,9 +43,9 @@ color_schemes = {
         "highlight": "#FFFFFF"  # White Highlight
     },
     "Dopamine Boost ✨": {
-        "background": "linear-gradient(to right, #FF69B4, #7DF9FF, #FFD700, #32CD32)",  # Candy-like Gradient
+        "background": "linear-gradient(to right, #FF69B4, #7DF9FF, #FFEB80, #32CD32)",  # Candy-like Gradient
         "text": "#000000",  # Black - for high contrast
-        "header": "linear-gradient(to right, #FF69B4, #7DF9FF, #FFD700, #32CD32)",  # Candy-like Gradient
+        "header": "linear-gradient(to right, #FF69B4, #7DF9FF, #FFEB80, #32CD32)",  # Candy-like Gradient
         "sidebar": "#FFF2CC",  # Light Yellow sidebar
         "frame": "#8B4513",  # Saddle Brown Frame (can be adjusted)
         "highlight": "#FFFFE0"  # LightYellow Highlight
@@ -219,7 +219,69 @@ if st.button("Send") and user_input:
 with st.sidebar:
     
     st.markdown("---")
+    
+    # ---- POMODORO TIMER ----
+    st.sidebar.subheader("⏳ Pomodoro Timer")
 
+    # Timer session duration selection
+    session_length = st.sidebar.selectbox("Select Focus Session Length:", [10, 20, 30, 40, 50, 60], index=2)
+    session_seconds = session_length * 60  # Convert minutes to seconds
+    
+    # Initialize session state variables
+    if "start_time" not in st.session_state:
+        st.session_state["start_time"] = None
+    if "timer_seconds" not in st.session_state:
+        st.session_state["timer_seconds"] = session_seconds
+    if "timer_running" not in st.session_state:
+        st.session_state["timer_running"] = False
+
+    # Timer display placeholders
+    timer_display = st.sidebar.empty()
+    progress_bar = st.sidebar.progress(0)
+    
+    col1, col2, col3 = st.sidebar.columns(3)
+    
+    def update_timer_display():
+        """Updates the timer display and progress bar."""
+        if st.session_state["timer_running"] and st.session_state["start_time"]:
+            elapsed_time = (datetime.now() - st.session_state["start_time"]).total_seconds()
+            remaining_time = max(st.session_state["timer_seconds"] - int(elapsed_time), 0)
+
+            mins, secs = divmod(remaining_time, 60)
+            timer_display.markdown(f"**Time Left:** {int(mins)} min {int(secs)} sec")
+            progress_bar.progress(max(0, remaining_time / st.session_state["timer_seconds"]))
+
+            if remaining_time <= 0:
+                st.sidebar.warning("🚨 Time for a break! 🚨")
+                st.session_state["timer_running"] = False  # Stop timer
+                st.session_state["start_time"] = None  # Reset start time
+
+        else:
+            mins, secs = divmod(st.session_state['timer_seconds'], 60)
+            timer_display.markdown(f"**Time Left:** {int(mins)} min {int(secs)} sec")
+            progress_bar.progress(0)
+
+    def start_timer(duration):
+        """Starts the countdown timer and stores start time."""
+        st.session_state["timer_seconds"] = duration
+        st.session_state["start_time"] = datetime.now()
+        st.session_state["timer_running"] = True
+
+    # Buttons to control the timer
+    with col1:
+        if st.button("Start"):
+            start_timer(session_seconds)
+
+    with col2:
+        if st.button("Break"):
+            start_timer(300)  # 5-minute break
+
+    with col3:
+        if st.button("Stop"):
+            st.session_state["timer_running"] = False
+            st.session_state["start_time"] = None
+    
+    st.markdown("---")
     st.subheader("✅ Task Manager")
 
     # Task state variables
@@ -313,72 +375,14 @@ with st.sidebar:
     st.markdown("---")
 
 
-    # ---- POMODORO TIMER ----
-    st.sidebar.subheader("⏳ Pomodoro Timer")
-
-    # Timer session duration selection
-    session_length = st.sidebar.selectbox("Select Focus Session Length:", [10, 20, 30, 40, 50, 60], index=2)
-    session_seconds = session_length * 60  # Convert minutes to seconds
-
-    # Initialize session state variables
-    if "start_time" not in st.session_state:
-        st.session_state["start_time"] = None
-    if "timer_seconds" not in st.session_state:
-        st.session_state["timer_seconds"] = session_seconds
-    if "timer_running" not in st.session_state:
-        st.session_state["timer_running"] = False
-
-    # Timer display placeholders
-    timer_display = st.sidebar.empty()
-    progress_bar = st.sidebar.progress(0)
-
-    def update_timer_display():
-        """Updates the timer display and progress bar."""
-        if st.session_state["timer_running"] and st.session_state["start_time"]:
-            elapsed_time = (datetime.now() - st.session_state["start_time"]).total_seconds()
-            remaining_time = max(st.session_state["timer_seconds"] - int(elapsed_time), 0)
-
-            mins, secs = divmod(remaining_time, 60)
-            timer_display.markdown(f"**Time Left:** {int(mins)} min {int(secs)} sec")
-            progress_bar.progress(max(0, remaining_time / st.session_state["timer_seconds"]))
-
-            if remaining_time <= 0:
-                st.sidebar.warning("🚨 Time for a break! 🚨")
-                st.session_state["timer_running"] = False  # Stop timer
-                st.session_state["start_time"] = None  # Reset start time
-
-        else:
-            mins, secs = divmod(st.session_state['timer_seconds'], 60)
-            timer_display.markdown(f"**Time Left:** {int(mins)} min {int(secs)} sec")
-            progress_bar.progress(0)
-
-    def start_timer(duration):
-        """Starts the countdown timer and stores start time."""
-        st.session_state["timer_seconds"] = duration
-        st.session_state["start_time"] = datetime.now()
-        st.session_state["timer_running"] = True
-
-    # Buttons to control the timer
-    col1, col2, col3 = st.sidebar.columns(3)
-    with col1:
-        if st.button("Start"):
-            start_timer(session_seconds)
-
-    with col2:
-        if st.button("Break"):
-            start_timer(300)  # 5-minute break
-
-    with col3:
-        if st.button("Stop"):
-            st.session_state["timer_running"] = False
-            st.session_state["start_time"] = None
+    # ---- POMODORO TIMER DISPLAY ----
 
     # 🔹 Non-blocking real-time update using Streamlit's built-in rerun mechanism
     if st.session_state["timer_running"]:
         update_timer_display()
         time.sleep(1)  # Wait 1 second before updating again
         st.rerun()  
-  # Forces script to rerun, but keeps UI elements
+    # Forces script to rerun, but keeps UI elements
 
         st.markdown("---")
 
