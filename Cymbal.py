@@ -2,7 +2,6 @@ import streamlit as st
 import google.generativeai as genai
 import os
 import time
-import threading
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from PIL import Image  # Import the Pillow library
@@ -30,7 +29,7 @@ def generate_response(user_input):
         return "⚠️ Error! Check API key & internet. 🌐"
 
 # ---- UI MODE SELECTION ----
-st.set_page_config(page_title="Orbit", page_icon="🧠", layout="wide")
+st.set_page_config(page_title="Study Buddy", page_icon="🧠", layout="wide")
 
 # Color Schemes
 color_schemes = {
@@ -43,9 +42,9 @@ color_schemes = {
         "highlight": "#FFFFFF"  # White Highlight
     },
     "Dopamine Boost ✨": {
-        "background": "linear-gradient(to right, #FF69B4, #7DF9FF, #FFEB80, #32CD32)",  # Candy-like Gradient
+        "background": "linear-gradient(to right, #FF69B4, #7DF9FF, #FFD700, #32CD32)",  # Candy-like Gradient
         "text": "#000000",  # Black - for high contrast
-        "header": "linear-gradient(to right, #FF69B4, #7DF9FF, #FFEB80, #32CD32)",  # Candy-like Gradient
+        "header": "linear-gradient(to right, #FF69B4, #7DF9FF, #FFD700, #32CD32)",  # Candy-like Gradient
         "sidebar": "#FFF2CC",  # Light Yellow sidebar
         "frame": "#8B4513",  # Saddle Brown Frame (can be adjusted)
         "highlight": "#FFFFE0"  # LightYellow Highlight
@@ -215,18 +214,29 @@ if st.button("Send") and user_input:
     st.rerun()
 
 
+# Define confetti function
+def confetti():
+    confetti_html = """
+        <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.0/dist/confetti.browser.min.js"></script>
+        <script>
+            confetti({
+              particleCount: 100,
+              spread: 70,
+              origin: { y: 0.6 }
+            });
+        </script>
+    """
+    components.html(confetti_html, height=0)
+
 # --- Sidebar Organization ---
 with st.sidebar:
-    
-    st.markdown("---")
-    
     # ---- POMODORO TIMER ----
-    st.sidebar.subheader("⏳ Pomodoro Timer")
+    st.subheader("⏳ Pomodoro Timer")
 
     # Timer session duration selection
-    session_length = st.sidebar.selectbox("Select Focus Session Length:", [10, 20, 30, 40, 50, 60], index=2)
+    session_length = st.selectbox("Select Focus Session Length:", [10, 20, 30, 40, 50, 60], index=2)
     session_seconds = session_length * 60  # Convert minutes to seconds
-    
+
     # Initialize session state variables
     if "start_time" not in st.session_state:
         st.session_state["start_time"] = None
@@ -234,13 +244,15 @@ with st.sidebar:
         st.session_state["timer_seconds"] = session_seconds
     if "timer_running" not in st.session_state:
         st.session_state["timer_running"] = False
+    if "time_remaining" not in st.session_state:
+        st.session_state["time_remaining"] = session_seconds
+    if "study_start_time" not in st.session_state:  # Initialize study_start_time
+        st.session_state["study_start_time"] = None
 
-    # Timer display placeholders
-    timer_display = st.sidebar.empty()
-    progress_bar = st.sidebar.progress(0)
-    
-    col1, col2, col3 = st.sidebar.columns(3)
-    
+    # Display timer
+    timer_display = st.empty()
+    progress_bar = st.progress(0)
+
     def update_timer_display():
         """Updates the timer display and progress bar."""
         if st.session_state["timer_running"] and st.session_state["start_time"]:
@@ -252,36 +264,56 @@ with st.sidebar:
             progress_bar.progress(max(0, remaining_time / st.session_state["timer_seconds"]))
 
             if remaining_time <= 0:
+                st.session_state["timer_running"] = False
+                st.session_state["start_time"] = None
                 st.sidebar.warning("🚨 Time for a break! 🚨")
-                st.session_state["timer_running"] = False  # Stop timer
-                st.session_state["start_time"] = None  # Reset start time
-
+                if mode == "Dopamine Boost ✨":
+                    confetti()
+                return True  # Signal to stop the loop
+            return False #Signal to continue the loop
         else:
-            mins, secs = divmod(st.session_state['timer_seconds'], 60)
-            timer_display.markdown(f"**Time Left:** {int(mins)} min {int(secs)} sec")
+            timer_display.markdown(f"**Time Left:** {int(st.session_state['timer_seconds'] // 60)} min {int(st.session_state['timer_seconds'] % 60)} sec")
             progress_bar.progress(0)
+            return True #Signal to stop the loop
 
     def start_timer(duration):
-        """Starts the countdown timer and stores start time."""
+        """Starts the timer."""
         st.session_state["timer_seconds"] = duration
+        st.session_state["time_remaining"] = duration
         st.session_state["start_time"] = datetime.now()
+        st.session_state["study_start_time"] = datetime.now()  # Set study_start_time
         st.session_state["timer_running"] = True
 
-    # Buttons to control the timer
+    def stop_timer():
+        """Stops the timer."""
+        st.session_state["timer_running"] = False
+        st.session_state["start_time"] = None
+
+    # Timer buttons
+    col1, col2, col3 = st.columns(3)
     with col1:
-        if st.button("Start"):
-            start_timer(session_seconds)
-
+        start_button = st.button("Start")
     with col2:
-        if st.button("Break"):
-            start_timer(300)  # 5-minute break
-
+        break_button = st.button("Take a Break")
     with col3:
-        if st.button("Stop"):
-            st.session_state["timer_running"] = False
-            st.session_state["start_time"] = None
-    
+        stop_button = st.button("Stop")
+
+    if start_button:
+        start_timer(session_seconds)
+    if break_button:
+        start_timer(300)
+    if stop_button:
+        stop_timer()
+
+    # Main timer loop (runs only when timer is active)
+    while st.session_state["timer_running"]:
+        if update_timer_display(): #If update timer display returns true, break out of the loop
+            break
+        time.sleep(1)
+        st.experimental_rerun()
+
     st.markdown("---")
+
     st.subheader("✅ Task Manager")
 
     # Task state variables
@@ -371,20 +403,6 @@ with st.sidebar:
     st.subheader("My Notes")
     for saved_note in st.session_state["sticky_notes"]:
         st.markdown(f"⏺️ {saved_note}")
-    
-    st.markdown("---")
-
-
-    # ---- POMODORO TIMER DISPLAY ----
-
-    # 🔹 Non-blocking real-time update using Streamlit's built-in rerun mechanism
-    if st.session_state["timer_running"]:
-        update_timer_display()
-        time.sleep(1)  # Wait 1 second before updating again
-        st.rerun()  
-    # Forces script to rerun, but keeps UI elements
-
-        st.markdown("---")
 
 # --- Session Summary ---
     st.subheader("📊 Session Summary")
@@ -417,7 +435,6 @@ with st.sidebar:
             st.rerun()
         else:
             st.sidebar.warning("Start focus session first!")
-        
 
 # --- Clear Chat Button ---
 if st.button("Clear Chat"):
