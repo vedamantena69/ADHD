@@ -310,7 +310,7 @@ with st.sidebar:
         if update_timer_display(): #If update timer display returns true, break out of the loop
             break
         time.sleep(1)
-        st.experimental_rerun()
+        st.rerun()
 
     st.markdown("---")
 
