@@ -305,12 +305,7 @@ with st.sidebar:
     if stop_button:
         stop_timer()
 
-    # Main timer loop (runs only when timer is active)
-    while st.session_state["timer_running"]:
-        if update_timer_display(): #If update timer display returns true, break out of the loop
-            break
-        time.sleep(1)
-        st.rerun()
+   
 
     st.markdown("---")
 
@@ -404,6 +399,13 @@ with st.sidebar:
     for saved_note in st.session_state["sticky_notes"]:
         st.markdown(f"⏺️ {saved_note}")
 
+ # Main timer loop (runs only when timer is active)
+    while st.session_state["timer_running"]:
+        if update_timer_display(): #If update timer display returns true, break out of the loop
+            break
+        time.sleep(1)
+        st.rerun()
+        
 # --- Session Summary ---
     st.subheader("📊 Session Summary")
     if st.button("End Session & Get Summary", key="end_session"):
