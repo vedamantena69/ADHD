@@ -42,9 +42,9 @@ color_schemes = {
         "highlight": "#FFFFFF"  # White Highlight
     },
     "Dopamine Boost ✨": {
-        "background": "linear-gradient(to right, #FF69B4, #7DF9FF, #FFD700, #32CD32)",  # Candy-like Gradient
+        "background": "linear-gradient(to right, #FF69B4, #7DF9FF, #FFEB80, #32CD32)",  # Candy-like Gradient
         "text": "#000000",  # Black - for high contrast
-        "header": "linear-gradient(to right, #FF69B4, #7DF9FF, #FFD700, #32CD32)",  # Candy-like Gradient
+        "header": "linear-gradient(to right, #FF69B4, #7DF9FF, #FFEB80, #32CD32)",  # Candy-like Gradient
         "sidebar": "#FFF2CC",  # Light Yellow sidebar
         "frame": "#8B4513",  # Saddle Brown Frame (can be adjusted)
         "highlight": "#FFFFE0"  # LightYellow Highlight
