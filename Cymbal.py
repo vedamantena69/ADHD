@@ -6,6 +6,7 @@ import threading
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from PIL import Image  # Import the Pillow library
+import streamlit.components.v1 as components
 
 # Load API key
 load_dotenv()
@@ -29,7 +30,7 @@ def generate_response(user_input):
         return "⚠️ Error! Check API key & internet. 🌐"
 
 # ---- UI MODE SELECTION ----
-st.set_page_config(page_title="Study Buddy", page_icon="🧠", layout="wide")
+st.set_page_config(page_title="Orbit", page_icon="🧠", layout="wide")
 
 # Color Schemes
 color_schemes = {
@@ -216,50 +217,9 @@ if st.button("Send") and user_input:
 
 # --- Sidebar Organization ---
 with st.sidebar:
-    st.subheader("🍅 Focus Timer ⏳")
-
-    # Timer state variables
-    if "timer_seconds" not in st.session_state:
-        st.session_state["timer_seconds"] = 1500  # 25 minutes
-    if "study_start_time" not in st.session_state:
-        st.session_state["study_start_time"] = None
-    if "timer_running" not in st.session_state:
-        st.session_state["timer_running"] = False
-
-    # Timer function
-    def update_timer():
-        while st.session_state["timer_running"] and st.session_state["timer_seconds"] > 0:
-            time.sleep(1)
-            st.session_state["timer_seconds"] -= 1
-            st.experimental_rerun()
-        if st.session_state["timer_seconds"] == 0:
-            st.warning("Time for a break! ☕")
-            st.session_state["timer_running"] = False
-
-    # Timer buttons
-    col1, col2 = st.columns(2)
-    if col1.button("▶ Start", key="start_focus"):
-        st.session_state["study_start_time"] = datetime.now()
-        st.session_state["timer_running"] = True
-        threading.Thread(target=update_timer, daemon=True).start()
-
-    if col2.button("☕ Break", key="take_break"):
-        st.session_state["timer_seconds"] = 300  # 5-minute break
-        st.session_state["timer_running"] = True
-        threading.Thread(target=update_timer, daemon=True).start()
-
-    # Timer display
-    st.progress(max(st.session_state["timer_seconds"] / 1500, 0))
-    minutes = st.session_state['timer_seconds'] // 60
-    seconds = st.session_state['timer_seconds'] % 60
-    st.markdown(f"**Time Left:** {minutes:02d} min {seconds:02d} sec")
-
-    # Stop timer button
-    if st.button("⏹ Stop", key="stop_timer"):
-        st.session_state["timer_running"] = False
-
-    st.markdown("---")
     
+    st.markdown("---")
+
     st.subheader("✅ Task Manager")
 
     # Task state variables
@@ -349,6 +309,78 @@ with st.sidebar:
     st.subheader("My Notes")
     for saved_note in st.session_state["sticky_notes"]:
         st.markdown(f"⏺️ {saved_note}")
+    
+    st.markdown("---")
+
+
+    # ---- POMODORO TIMER ----
+    st.sidebar.subheader("⏳ Pomodoro Timer")
+
+    # Timer session duration selection
+    session_length = st.sidebar.selectbox("Select Focus Session Length:", [10, 20, 30, 40, 50, 60], index=2)
+    session_seconds = session_length * 60  # Convert minutes to seconds
+
+    # Initialize session state variables
+    if "start_time" not in st.session_state:
+        st.session_state["start_time"] = None
+    if "timer_seconds" not in st.session_state:
+        st.session_state["timer_seconds"] = session_seconds
+    if "timer_running" not in st.session_state:
+        st.session_state["timer_running"] = False
+
+    # Timer display placeholders
+    timer_display = st.sidebar.empty()
+    progress_bar = st.sidebar.progress(0)
+
+    def update_timer_display():
+        """Updates the timer display and progress bar."""
+        if st.session_state["timer_running"] and st.session_state["start_time"]:
+            elapsed_time = (datetime.now() - st.session_state["start_time"]).total_seconds()
+            remaining_time = max(st.session_state["timer_seconds"] - int(elapsed_time), 0)
+
+            mins, secs = divmod(remaining_time, 60)
+            timer_display.markdown(f"**Time Left:** {int(mins)} min {int(secs)} sec")
+            progress_bar.progress(max(0, remaining_time / st.session_state["timer_seconds"]))
+
+            if remaining_time <= 0:
+                st.sidebar.warning("🚨 Time for a break! 🚨")
+                st.session_state["timer_running"] = False  # Stop timer
+                st.session_state["start_time"] = None  # Reset start time
+
+        else:
+            mins, secs = divmod(st.session_state['timer_seconds'], 60)
+            timer_display.markdown(f"**Time Left:** {int(mins)} min {int(secs)} sec")
+            progress_bar.progress(0)
+
+    def start_timer(duration):
+        """Starts the countdown timer and stores start time."""
+        st.session_state["timer_seconds"] = duration
+        st.session_state["start_time"] = datetime.now()
+        st.session_state["timer_running"] = True
+
+    # Buttons to control the timer
+    col1, col2, col3 = st.sidebar.columns(3)
+    with col1:
+        if st.button("Start"):
+            start_timer(session_seconds)
+
+    with col2:
+        if st.button("Break"):
+            start_timer(300)  # 5-minute break
+
+    with col3:
+        if st.button("Stop"):
+            st.session_state["timer_running"] = False
+            st.session_state["start_time"] = None
+
+    # 🔹 Non-blocking real-time update using Streamlit's built-in rerun mechanism
+    if st.session_state["timer_running"]:
+        update_timer_display()
+        time.sleep(1)  # Wait 1 second before updating again
+        st.rerun()  
+  # Forces script to rerun, but keeps UI elements
+
+        st.markdown("---")
 
 # --- Session Summary ---
     st.subheader("📊 Session Summary")
@@ -381,6 +413,7 @@ with st.sidebar:
             st.rerun()
         else:
             st.sidebar.warning("Start focus session first!")
+        
 
 # --- Clear Chat Button ---
 if st.button("Clear Chat"):
